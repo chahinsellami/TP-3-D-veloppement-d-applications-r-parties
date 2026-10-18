@@ -1,169 +1,138 @@
-# TP2 - Echange d'operations par sockets TCP
+# TP2 - Echange d'objets par sockets TCP
 
-Projet de developpement d'applications reparties (DAR) - Activite 2-1
+Projet de developpement d'applications reparties (DAR), TP2 - Activite 2-2.
 
----
+Cette activite met en oeuvre l'echange d'objets Java entre un client et un
+serveur avec des sockets TCP et la serialisation.
 
-## About
+## Objectifs de l'activite
 
-This project extends the one-byte communication implemented in TP1. The client sends a complete addition expression as text, such as `55 + 25`, through a TCP socket. The server calculates the result and sends it back to the client.
-
-The current version implements addition only. Subtraction, multiplication and division will be added in later steps.
+- Creer une classe Java qui implemente `Serializable`.
+- Envoyer du client au serveur un objet contenant deux operandes et un operateur.
+- Recuperer les donnees de l'objet cote serveur et effectuer le calcul.
+- Renvoyer un objet contenant le resultat au client.
+- Lire et afficher le resultat cote client.
 
 ## Structure
-```
+
+```text
 .
-├── src/
-│   ├── clientPackage/
-│   │   └── Client.java
-│   └── serverPackage/
-│       └── Server.java
-├── screenshots/
-│   └── *.png
-├── README.md
-└── .gitignore
+|-- src/
+|   |-- clientPackage/
+|   |   |-- CalculationResponse.java
+|   |   |-- Client.java
+|   |   `-- OperationRequest.java
+|   |-- serverPackage/
+|   `-- Server.java
+|-- screenshots/
+|-- README.md
+`-- .gitignore
 ```
 
-
-## Objective
-
-The objective of this activity is to exchange complete character strings between a TCP client and a TCP server instead of exchanging only one byte.
-
-## Implementation
-
-The client and server exchange character strings through TCP sockets using `DataInputStream` and `DataOutputStream`:
-
-1. The client validates an expression in the form `number + number`.
-2. The client sends the expression to the server.
-3. The server calculates the addition.
-4. The server sends the result to the client.
-5. The client displays the result.
-
-Invalid expressions such as `25 ** 55` and `abc + 3` are rejected by the client and are not sent to the server.
-
-## Test Results
-
-Input in the client:
+`OperationRequest` et `CalculationResponse` implementent `Serializable` et
+constituent le protocole d'echange entre le client et le serveur. Le serveur
+importe ces deux classes depuis `clientPackage` afin que les deux programmes
+utilisent exactement les memes noms de classes serialisees.
 
 ```text
-55 + 25
+Socket
+  -> BufferedInputStream
+  -> ObjectInputStream
 ```
 
-Expected result on the client:
+`BufferedInputStream` met en memoire tampon les donnees recues. Les flux objet
+serialisent et deserialisent les instances Java.
 
-```text
-55 + 25 = 80
-```
+## Fonctionnement
 
-The server displays the operation and the calculated result:
+1. Le client analyse une expression de la forme `nombre operateur nombre`.
+2. Le client construit et serialise un `OperationRequest`.
+3. Le serveur deserialise la requete, recupere les trois valeurs et effectue
+   le calcul.
+4. Le serveur serialise un `CalculationResponse`.
+5. Le client deserialise la reponse et l'affiche.
 
-```text
-55 + 25 = 80
-```
-
-Invalid input tests:
-
-```text
-25 ** 55
-abc + 3
-```
-
-Both inputs are rejected by the client.
-
-## Screenshots
-
-### Client test
-
-The client sends `55 + 25` and displays the result received from the server. It also rejects invalid expressions.
-
-![Client test](screenshots/client1.png)
-
-### Server test
-
-The server accepts the TCP connection, receives the expression and calculates the result.
-
-![Server test](screenshots/server1.png)
-
----
+Les operateurs pris en charge sont `+`, `-`, `*` et `/`. La division par zero
+est refusee par le serveur. Les expressions invalides sont refusees par le
+client et ne sont pas envoyees.
 
 ## Compilation
 
+Depuis la racine du projet :
+
 ```powershell
-javac -d out src\serverPackage\Server.java src\clientPackage\Client.java
+javac -d out (Get-ChildItem -Recurse -Filter *.java src).FullName
 ```
 
----
+La commande equivalente, compatible avec un terminal qui accepte les
+wildcards Java, est :
+
+```powershell
+javac -d out src\clientPackage\*.java src\serverPackage\Server.java
+```
 
 ## Execution
 
-### Server
+### Serveur
+
+Dans un premier terminal :
+
 ```powershell
-java -cp out serverPackage.Server [port]
+java -cp out serverPackage.Server 5000
 ```
-Default port: `5000`
+
+Le port par defaut est `5000`.
 
 ### Client
-```powershell
-This TP2 project is a Java TCP client-server calculator. It extends the one-byte communication from TP1 by allowing the client and server to exchange complete text messages.
 
-The client sends an addition expression such as `55 + 25`. The server receives the expression, calculates the result and sends the result back to the client using `DataInputStream` and `DataOutputStream`.
+Dans un second terminal :
+
+```powershell
+java -cp out clientPackage.Client localhost 5000
 ```
-Default host: `localhost`  
-Default port: `5000`
 
-### Cross-machine
-```powershell
-+-- src/
-|   +-- clientPackage/
-|   |   +-- Client.java
-|   +-- serverPackage/
-|       +-- Server.java
-+-- screenshots/
-|   +-- client1.png
-|   +-- server1.png
-+-- README.md
-+-- .gitignore
-1. Open a terminal in the project directory.
+L'hote par defaut est `localhost` et le port par defaut est `5000`.
 
-The `out/` directory is not part of the repository. It is created locally by the Java compilation command and can be deleted at any time.
+Saisir ensuite, par exemple :
 
-2. Compile the project:
+```text
+55 + 25
+20 - 7
+6 * 8
+15 / 4
+```
 
-   ```powershell
-   javac -d out src\serverPackage\Server.java src\clientPackage\Client.java
-   ```
+Le client affiche respectivement :
 
-3. Start the server in the first terminal:
+```text
+55 + 25 = 80
+20 - 7 = 13
+6 * 8 = 48
+15 / 4 = 3.75
+```
 
-   ```powershell
-   java -cp out serverPackage.Server 5000
-   ```
+Saisir `exit` pour fermer proprement la session client.
 
-4. Start the client in a second terminal:
+## Tests d'erreur
 
-   ```powershell
-   java -cp out clientPackage.Client localhost 5000
-   ```
+Les saisies `25 ** 55`, `abc + 3` et `10 / 0` sont gerees sans arret du
+serveur :
 
-5. Enter the following expression in the client:
+- les deux premieres sont refusees par le client ;
+- la derniere est refusee par le serveur avec le message
+  `Division par zero impossible.`
 
-   ```text
-   55 + 25
-   ```
+## Captures d'ecran
 
-6. Check that the client displays `55 + 25 = 80` and that the server displays the same calculation.
+### Client
 
-7. Enter `exit` to close the client session.
+Le client envoie une requete serialisee et affiche le resultat recu du
+serveur :
 
-## Communication Protocol
+![Test du client](screenshots/client2.png)
 
-The client and server use:
+### Serveur
 
-- `Socket` for the TCP connection
-- `DataOutputStream.writeUTF()` to send strings
-- `DataInputStream.readUTF()` to receive strings
+Le serveur recoit l'objet, effectue le calcul et affiche le resultat :
 
-Try-with-resources closes the sockets and streams automatically.
-
----
-
+![Test du serveur](screenshots/server2.png)

@@ -1,8 +1,13 @@
 package serverPackage;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import clientPackage.CalculationResponse;
+import clientPackage.OperationRequest;
+
+import java.io.BufferedInputStream;
+import java.io.EOFException;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -11,73 +16,91 @@ public class Server {
     private static final int DEFAULT_PORT = 5000;
 
     public static void main(String[] args) {
-        int port = DEFAULT_PORT;
-        if (args.length > 0) {
-            try {
-                port = Integer.parseInt(args[0]);
-            } catch (NumberFormatException e) {
-                System.err.println("Port invalide. Utilise: java Server [port]");
-                return;
-            }
-        }
-
-        InetAddress localAddress = null;
+        int port;
         try {
-            localAddress = InetAddress.getLocalHost();
-        } catch (IOException e) {
-            System.err.println("Erreur adresse locale: " + e.getMessage());
+            port = args.length > 0 ? Integer.parseInt(args[0]) : DEFAULT_PORT;
+        } catch (NumberFormatException exception) {
+            System.err.println("Port invalide. Utilisez: java serverPackage.Server [port]");
             return;
         }
 
-        String host = localAddress.getHostAddress();
-        System.out.println("Serveur de calculatrice en attente sur " + host + ":" + port);
+        try {
+            String host = InetAddress.getLocalHost().getHostAddress();
+            System.out.println("Serveur de calculatrice en attente sur " + host + ":" + port);
+        } catch (IOException exception) {
+            System.err.println("Adresse locale indisponible: " + exception.getMessage());
+        }
 
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             while (true) {
-                try (Socket clientSocket = serverSocket.accept()) {
-                    System.out.println("Client connecté: " + clientSocket.getInetAddress() + ":" + clientSocket.getPort());
+                try (Socket clientSocket = serverSocket.accept();
+                     ObjectOutputStream output =
+                             new ObjectOutputStream(clientSocket.getOutputStream());
+                     ObjectInputStream input =
+                             new ObjectInputStream(
+                                     new BufferedInputStream(clientSocket.getInputStream()))) {
 
-                    DataInputStream input = new DataInputStream(clientSocket.getInputStream());
-                    DataOutputStream output = new DataOutputStream(clientSocket.getOutputStream());
-
-                    while (true) {
-                        String expression;
-                        try {
-                            expression = input.readUTF();
-                        } catch (IOException exception) {
-                            break;
-                        }
-                        if (expression.equalsIgnoreCase("exit")) {
-                            break;
-                        }
-
-                        String[] operands = expression.trim().split("\\s*\\+\\s*");
-                        if (operands.length != 2) {
-                            output.writeUTF("Expression invalide");
-                            output.flush();
-                            continue;
-                        }
-
-                        try {
-                            int firstOperand = Integer.parseInt(operands[0]);
-                            int secondOperand = Integer.parseInt(operands[1]);
-                            int result = firstOperand + secondOperand;
-                            output.writeUTF(firstOperand + " + " + secondOperand + " = " + result);
-                            output.flush();
-                            System.out.println(expression + " = " + result);
-                        } catch (NumberFormatException exception) {
-                            output.writeUTF("Expression invalide");
-                            output.flush();
-                        }
-                    }
-                } catch (IOException e) {
-                    // Accept loop error
-                    break;
+                    System.out.println("Client connecte: "
+                            + clientSocket.getInetAddress() + ":" + clientSocket.getPort());
+                    processClient(input, output);
+                } catch (IOException | ClassNotFoundException exception) {
+                    System.err.println("Erreur avec le client: " + exception.getMessage());
                 }
             }
-        } catch (IOException e) {
-            System.err.println("Erreur serveur: " + e.getMessage());
-            e.printStackTrace();
+        } catch (IOException exception) {
+            System.err.println("Erreur serveur: " + exception.getMessage());
         }
+    }
+
+    private static void processClient(ObjectInputStream input, ObjectOutputStream output)
+            throws IOException, ClassNotFoundException {
+        while (true) {
+            Object received;
+            try {
+                received = input.readObject();
+            } catch (EOFException exception) {
+                return;
+            }
+
+            if (!(received instanceof OperationRequest)) {
+                output.writeObject(CalculationResponse.error("Objet de requete invalide."));
+                output.flush();
+                continue;
+            }
+
+            OperationRequest request = (OperationRequest) received;
+            CalculationResponse response = calculate(request);
+            output.writeObject(response);
+            output.flush();
+            System.out.println(response.getMessage());
+        }
+    }
+
+    private static CalculationResponse calculate(OperationRequest request) {
+        double firstOperand = request.getFirstOperand();
+        double secondOperand = request.getSecondOperand();
+        double result;
+
+        switch (request.getOperator()) {
+            case "+":
+                result = firstOperand + secondOperand;
+                break;
+            case "-":
+                result = firstOperand - secondOperand;
+                break;
+            case "*":
+                result = firstOperand * secondOperand;
+                break;
+            case "/":
+                if (secondOperand == 0) {
+                    return CalculationResponse.error("Division par zero impossible.");
+                }
+                result = firstOperand / secondOperand;
+                break;
+            default:
+                return CalculationResponse.error("Operateur invalide.");
+        }
+
+        return CalculationResponse.success(request, result);
     }
 }
