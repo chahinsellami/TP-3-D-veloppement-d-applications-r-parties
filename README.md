@@ -1,11 +1,33 @@
-# TP2 - Echange d'objets par sockets TCP
+# TP2 - Les sockets TCP
 
-Projet de developpement d'applications reparties (DAR), TP2 - Activite 2-2.
+Projet de developpement d'applications reparties (DAR).
 
-Cette activite met en oeuvre l'echange d'objets Java entre un client et un
-serveur avec des sockets TCP et la serialisation.
+## Activite 2-1 - Echange de chaines de caracteres
 
-## Objectifs de l'activite
+Dans cette premiere activite, le client et le serveur echangent une expression
+complete sous forme de texte avec `DataInputStream` et `DataOutputStream`.
+
+Le client valide une addition comme `55 + 25`, l'envoie au serveur et affiche
+le resultat recu. Les expressions invalides ne sont pas envoyees.
+
+### Captures d'ecran
+
+#### Client - Activite 2-1
+
+![Client - Activite 2-1](screenshots/client1.png)
+
+#### Serveur - Activite 2-1
+
+![Serveur - Activite 2-1](screenshots/server1.png)
+
+---
+
+## Activite 2-2 - Echange d'objets Java
+
+Cette deuxieme activite etend la precedente avec l'echange d'objets Java
+serialises entre le client et le serveur.
+
+### Objectifs de l'activite
 
 - Creer une classe Java qui implemente `Serializable`.
 - Envoyer du client au serveur un objet contenant deux operandes et un operateur.
@@ -13,7 +35,7 @@ serveur avec des sockets TCP et la serialisation.
 - Renvoyer un objet contenant le resultat au client.
 - Lire et afficher le resultat cote client.
 
-## Structure
+### Structure
 
 ```text
 .
@@ -43,7 +65,7 @@ Socket
 `BufferedInputStream` met en memoire tampon les donnees recues. Les flux objet
 serialisent et deserialisent les instances Java.
 
-## Fonctionnement
+### Fonctionnement
 
 1. Le client analyse une expression de la forme `nombre operateur nombre`.
 2. Le client construit et serialise un `OperationRequest`.
@@ -56,7 +78,7 @@ Les operateurs pris en charge sont `+`, `-`, `*` et `/`. La division par zero
 est refusee par le serveur. Les expressions invalides sont refusees par le
 client et ne sont pas envoyees.
 
-## Compilation
+### Compilation
 
 Depuis la racine du projet :
 
@@ -71,7 +93,7 @@ wildcards Java, est :
 javac -d out src\clientPackage\*.java src\serverPackage\Server.java
 ```
 
-## Execution
+### Execution
 
 ### Serveur
 
@@ -113,7 +135,7 @@ Le client affiche respectivement :
 
 Saisir `exit` pour fermer proprement la session client.
 
-## Tests d'erreur
+### Tests d'erreur
 
 Les saisies `25 ** 55`, `abc + 3` et `10 / 0` sont gerees sans arret du
 serveur :
@@ -122,32 +144,17 @@ serveur :
 - la derniere est refusee par le serveur avec le message
   `Division par zero impossible.`
 
-## Captures d'ecran
+### Captures d'ecran
 
-Les captures montrent la progression et les tests realises pendant
-l'activite.
-
-### Etape 1 - Premier test du client
-
-Premier test du client avec l'echange d'une operation :
-
-![Premier test du client](screenshots/client1.png)
-
-### Etape 2 - Premier test du serveur
-
-Premier test du serveur apres la reception et le traitement de la requete :
-
-![Premier test du serveur](screenshots/server1.png)
-
-### Etape 3 - Test final du client
+#### Client - Activite 2-2
 
 Le client envoie une requete serialisee et affiche le resultat recu du
 serveur :
 
-![Test final du client](screenshots/client2.png)
+![Client - Activite 2-2](screenshots/client2.png)
 
-### Etape 4 - Test final du serveur
+#### Serveur - Activite 2-2
 
 Le serveur recoit l'objet, effectue le calcul et affiche le resultat :
 
-![Test final du serveur](screenshots/server2.png)
+![Serveur - Activite 2-2](screenshots/server2.png)
