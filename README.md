@@ -124,15 +124,30 @@ serveur :
 
 ## Captures d'ecran
 
-### Client
+Les captures montrent la progression et les tests realises pendant
+l'activite.
+
+### Etape 1 - Premier test du client
+
+Premier test du client avec l'echange d'une operation :
+
+![Premier test du client](screenshots/client1.png)
+
+### Etape 2 - Premier test du serveur
+
+Premier test du serveur apres la reception et le traitement de la requete :
+
+![Premier test du serveur](screenshots/server1.png)
+
+### Etape 3 - Test final du client
 
 Le client envoie une requete serialisee et affiche le resultat recu du
 serveur :
 
-![Test du client](screenshots/client2.png)
+![Test final du client](screenshots/client2.png)
 
-### Serveur
+### Etape 4 - Test final du serveur
 
 Le serveur recoit l'objet, effectue le calcul et affiche le resultat :
 
-![Test du serveur](screenshots/server2.png)
+![Test final du serveur](screenshots/server2.png)
