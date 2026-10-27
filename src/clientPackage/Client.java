@@ -31,7 +31,13 @@ public class Client {
                      new BufferedInputStream(socket.getInputStream()));
              Scanner scanner = new Scanner(System.in)) {
 
-            System.out.println("=== TP2 - Calculatrice TCP par objets ===");
+            Object clientNumber = input.readObject();
+            if (!(clientNumber instanceof String)) {
+                throw new IOException("Numero de client invalide.");
+            }
+
+            System.out.println("=== TP3 - Client TCP multi-thread ===");
+            System.out.println(clientNumber);
             System.out.println("Entrez une operation comme: 55 + 25");
             System.out.println("Operateurs acceptes: +, -, *, /");
             System.out.println("Entrez exit pour quitter.");

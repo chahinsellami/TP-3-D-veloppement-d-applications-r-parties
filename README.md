@@ -1,121 +1,83 @@
-# TP2 - Les sockets TCP
+# TP3 - Serveur multi-thread TCP
 
-Projet de developpement d'applications reparties (DAR).
+Projet de developpement d'applications reparties (DAR), realise avec Java et
+des sockets TCP en mode connecte.
 
-## Activite 2-1 - Echange de chaines de caracteres
+## Objectifs
 
-Dans cette premiere activite, le client et le serveur echangent une expression
-complete sous forme de texte avec `DataInputStream` et `DataOutputStream`.
+Ce projet met en oeuvre :
 
-Le client valide une addition comme `55 + 25`, l'envoie au serveur et affiche
-le resultat recu. Les expressions invalides ne sont pas envoyees.
+- un serveur TCP capable d'accepter plusieurs clients simultanement ;
+- un thread dedie pour chaque client connecte ;
+- l'identification de chaque client par un numero d'ordre ;
+- l'echange d'objets Java serialises ;
+- un service de calculatrice partage par plusieurs clients ;
+- un compteur global et thread-safe des operations traitees.
 
-### Captures d'ecran
-
-#### Client - Activite 2-1
-
-![Client - Activite 2-1](screenshots/client1.png)
-
-#### Serveur - Activite 2-1
-
-![Serveur - Activite 2-1](screenshots/server1.png)
-
----
-
-## Activite 2-2 - Echange d'objets Java
-
-Cette deuxieme activite etend la precedente avec l'echange d'objets Java
-serialises entre le client et le serveur.
-
-### Objectifs de l'activite
-
-- Creer une classe Java qui implemente `Serializable`.
-- Envoyer du client au serveur un objet contenant deux operandes et un operateur.
-- Recuperer les donnees de l'objet cote serveur et effectuer le calcul.
-- Renvoyer un objet contenant le resultat au client.
-- Lire et afficher le resultat cote client.
-
-### Structure
+## Structure du projet
 
 ```text
-.
+TP3/
 |-- src/
 |   |-- clientPackage/
 |   |   |-- CalculationResponse.java
 |   |   |-- Client.java
 |   |   `-- OperationRequest.java
-|   |-- serverPackage/
-|   `-- Server.java
+|   `-- serverPackage/
+|       `-- Server.java
 |-- screenshots/
+|   |-- client1-tp3.png
+|   |-- client1tp3-2.png
+|   |-- client2-tp3.png
+|   |-- client2tp3-2.png
+|   |-- servertp3.png
+|   `-- servertp3-2.png
 |-- README.md
 `-- .gitignore
 ```
 
-`OperationRequest` et `CalculationResponse` implementent `Serializable` et
-constituent le protocole d'echange entre le client et le serveur. Le serveur
-importe ces deux classes depuis `clientPackage` afin que les deux programmes
-utilisent exactement les memes noms de classes serialisees.
+## Fonctionnement
 
-```text
-Socket
-  -> BufferedInputStream
-  -> ObjectInputStream
-```
+Le serveur ouvre un `ServerSocket` sur le port choisi. A chaque connexion, il :
 
-`BufferedInputStream` met en memoire tampon les donnees recues. Les flux objet
-serialisent et deserialisent les instances Java.
+1. attribue un numero unique au client ;
+2. affiche son adresse IP et son port ;
+3. cree un thread dedie ;
+4. envoie au client son numero ;
+5. traite les operations envoyees par ce client.
 
-### Fonctionnement
+Les classes `OperationRequest` et `CalculationResponse` implementent
+`Serializable`. Elles permettent d'envoyer les operations et les resultats
+par `ObjectOutputStream` et `ObjectInputStream`.
 
-1. Le client analyse une expression de la forme `nombre operateur nombre`.
-2. Le client construit et serialise un `OperationRequest`.
-3. Le serveur deserialise la requete, recupere les trois valeurs et effectue
-   le calcul.
-4. Le serveur serialise un `CalculationResponse`.
-5. Le client deserialise la reponse et l'affiche.
+Le compteur global est un `AtomicInteger`. Il est incremente une seule fois
+pour chaque operation valide recue, meme lorsque plusieurs clients envoient des
+operations simultanement.
 
-Les operateurs pris en charge sont `+`, `-`, `*` et `/`. La division par zero
-est refusee par le serveur. Les expressions invalides sont refusees par le
-client et ne sont pas envoyees.
-
-### Compilation
+## Compilation
 
 Depuis la racine du projet :
 
 ```powershell
-javac -d out (Get-ChildItem -Recurse -Filter *.java src).FullName
+javac -encoding UTF-8 -d out (Get-ChildItem -Recurse -Filter *.java src).FullName
 ```
 
-La commande equivalente, compatible avec un terminal qui accepte les
-wildcards Java, est :
+## Execution locale
+
+Dans un premier terminal, lancer le serveur :
 
 ```powershell
-javac -d out src\clientPackage\*.java src\serverPackage\Server.java
+java -cp out serverPackage.Server 1234
 ```
 
-### Execution
-
-### Serveur
-
-Dans un premier terminal :
+Dans plusieurs terminaux, lancer les clients :
 
 ```powershell
-java -cp out serverPackage.Server 5000
+java -cp out clientPackage.Client localhost 1234
 ```
 
-Le port par defaut est `5000`.
-
-### Client
-
-Dans un second terminal :
-
-```powershell
-java -cp out clientPackage.Client localhost 5000
-```
-
-L'hote par defaut est `localhost` et le port par defaut est `5000`.
-
-Saisir ensuite, par exemple :
+Chaque client affiche son numero de connexion, puis peut envoyer des
+operations comme :
 
 ```text
 55 + 25
@@ -124,7 +86,7 @@ Saisir ensuite, par exemple :
 15 / 4
 ```
 
-Le client affiche respectivement :
+Exemples de resultats :
 
 ```text
 55 + 25 = 80
@@ -133,28 +95,91 @@ Le client affiche respectivement :
 15 / 4 = 3.75
 ```
 
-Saisir `exit` pour fermer proprement la session client.
+Pour fermer un client proprement, saisir :
 
-### Tests d'erreur
+```text
+exit
+```
 
-Les saisies `25 ** 55`, `abc + 3` et `10 / 0` sont gerees sans arret du
-serveur :
+## Compteur global
 
-- les deux premieres sont refusees par le client ;
-- la derniere est refusee par le serveur avec le message
-  `Division par zero impossible.`
+Le serveur affiche le compteur et le thread responsable apres chaque operation :
 
-### Captures d'ecran
+```text
+Operation n°1 traitee par client-handler-1
+55 + 25 = 80
+Operation n°2 traitee par client-handler-2
+20 * 3 = 60
+```
 
-#### Client - Activite 2-2
+Le compteur ne doit pas contenir de doublon et doit augmenter d'une unite par
+operation calculee.
 
-Le client envoie une requete serialisee et affiche le resultat recu du
-serveur :
+## Tests effectues
 
-![Client - Activite 2-2](screenshots/client2.png)
+Les tests locaux ont ete realises avec deux clients Java connectes au meme
+serveur. Les clients ont recu des numeros differents et ont execute des
+operations independantes. Le serveur a correctement traite les operations
+dans les threads correspondants et le compteur global est reste coherent.
 
-#### Serveur - Activite 2-2
+Les cas suivants sont egalement geres :
 
-Le serveur recoit l'objet, effectue le calcul et affiche le resultat :
+- expression invalide : refusee par le client ;
+- division par zero : refusee par le serveur ;
+- fermeture du client avec `exit` : geree proprement.
 
-![Serveur - Activite 2-2](screenshots/server2.png)
+## Test sur reseau local
+
+Sur la machine serveur, trouver l'adresse IPv4 avec `ipconfig`, puis lancer :
+
+```powershell
+java -cp out serverPackage.Server 1234
+```
+
+Sur une autre machine du meme reseau, lancer le client en remplacant
+`192.168.1.10` par l'adresse IPv4 du serveur :
+
+```powershell
+java -cp out clientPackage.Client 192.168.1.10 1234
+```
+
+Le port TCP `1234` doit etre autorise dans le pare-feu de la machine serveur.
+
+## Captures d'ecran
+
+### Activite 3-1 - plusieurs clients
+
+Le serveur accepte plusieurs clients et affiche leur numero ainsi que leur
+adresse :
+
+![Serveur - Activite 3-1](screenshots/servertp3.png)
+
+Le premier client :
+
+![Client 1 - Activite 3-1](screenshots/client1-tp3.png)
+
+Le deuxieme client :
+
+![Client 2 - Activite 3-1](screenshots/client2-tp3.png)
+
+### Activite 3-2 - calculatrice et compteur global
+
+Le serveur affiche les operations traitees et leur compteur global :
+
+![Serveur - Activite 3-2](screenshots/servertp3-2.png)
+
+Le premier client de l'activite 3-2 :
+
+![Client 1 - Activite 3-2](screenshots/client1tp3-2.png)
+
+Le deuxieme client de l'activite 3-2 :
+
+![Client 2 - Activite 3-2](screenshots/client2tp3-2.png)
+
+## Synthese
+
+Les activites 3-1 et 3-2 ont permis de transformer le serveur TCP initial en
+un serveur multi-thread. Chaque client dispose d'une communication independante
+avec un thread dedie. L'activite 3-2 ajoute le service de calculatrice par
+objets Java et un compteur global protege par `AtomicInteger`, afin de compter
+correctement les operations provenant de plusieurs clients simultanes.

@@ -11,9 +11,12 @@ import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Server {
     private static final int DEFAULT_PORT = 5000;
+    private static final AtomicInteger CLIENT_COUNTER = new AtomicInteger();
+    private static final AtomicInteger OPERATION_COUNTER = new AtomicInteger();
 
     public static void main(String[] args) {
         int port;
@@ -32,23 +35,48 @@ public class Server {
         }
 
         try (ServerSocket serverSocket = new ServerSocket(port)) {
+            System.out.println("Serveur multi-thread demarre sur le port " + port);
             while (true) {
-                try (Socket clientSocket = serverSocket.accept();
-                     ObjectOutputStream output =
-                             new ObjectOutputStream(clientSocket.getOutputStream());
-                     ObjectInputStream input =
-                             new ObjectInputStream(
-                                     new BufferedInputStream(clientSocket.getInputStream()))) {
-
-                    System.out.println("Client connecte: "
-                            + clientSocket.getInetAddress() + ":" + clientSocket.getPort());
-                    processClient(input, output);
-                } catch (IOException | ClassNotFoundException exception) {
-                    System.err.println("Erreur avec le client: " + exception.getMessage());
-                }
+                Socket clientSocket = serverSocket.accept();
+                int clientNumber = CLIENT_COUNTER.incrementAndGet();
+                Thread clientThread = new Thread(
+                        new ClientHandler(clientSocket, clientNumber),
+                        "client-handler-" + clientNumber);
+                clientThread.start();
             }
         } catch (IOException exception) {
             System.err.println("Erreur serveur: " + exception.getMessage());
+        }
+    }
+
+    private static final class ClientHandler implements Runnable {
+        private final Socket clientSocket;
+        private final int clientNumber;
+
+        private ClientHandler(Socket clientSocket, int clientNumber) {
+            this.clientSocket = clientSocket;
+            this.clientNumber = clientNumber;
+        }
+
+        @Override
+        public void run() {
+            String clientAddress = clientSocket.getRemoteSocketAddress().toString();
+            System.out.println("Client n°" + clientNumber + " connecte depuis " + clientAddress);
+
+            try (Socket socket = clientSocket;
+                 ObjectOutputStream output = new ObjectOutputStream(socket.getOutputStream());
+                 ObjectInputStream input = new ObjectInputStream(
+                         new BufferedInputStream(socket.getInputStream()))) {
+
+                output.writeObject("Vous êtes le client n°" + clientNumber);
+                output.flush();
+                processClient(input, output);
+            } catch (EOFException exception) {
+                System.out.println("Client n°" + clientNumber + " deconnecte.");
+            } catch (IOException | ClassNotFoundException exception) {
+                System.err.println("Erreur avec le client n°" + clientNumber + ": "
+                        + exception.getMessage());
+            }
         }
     }
 
@@ -64,15 +92,16 @@ public class Server {
 
             if (!(received instanceof OperationRequest)) {
                 output.writeObject(CalculationResponse.error("Objet de requete invalide."));
-                output.flush();
-                continue;
+            } else {
+                OperationRequest request = (OperationRequest) received;
+                CalculationResponse response = calculate(request);
+                output.writeObject(response);
+                int operationNumber = OPERATION_COUNTER.incrementAndGet();
+                System.out.println("Operation n°" + operationNumber
+                        + " traitee par " + Thread.currentThread().getName());
+                System.out.println(response.getMessage());
             }
-
-            OperationRequest request = (OperationRequest) received;
-            CalculationResponse response = calculate(request);
-            output.writeObject(response);
             output.flush();
-            System.out.println(response.getMessage());
         }
     }
 
